@@ -12,8 +12,6 @@ dist/
 *.bundle.js
 *.bundle.js.map
 
-# Environment variables
-.env*
 docker-compose.override.yml
 
 # IDE and editor files

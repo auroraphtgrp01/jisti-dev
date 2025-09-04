@@ -33,9 +33,9 @@ cp "$JITSI_MEET_DIR"/*.js "$TEMP_BUILD_DIR/" 2>/dev/null || true
 # Copy Dockerfile
 cp "$DOCKER_DIR/web/Dockerfile.custom" "$TEMP_BUILD_DIR/Dockerfile"
 
-echo "🏗️  Building Docker image..."
+echo "🏗️  Building Docker image for Linux AMD64..."
 cd "$TEMP_BUILD_DIR"
-docker build -t auroraphtgrp/jitsi-react:$TAG .
+docker build --platform linux/amd64 -t auroraphtgrp/jitsi-react:$TAG .
 
 echo "✅ Custom image built successfully!"
 echo "📝 Image name: auroraphtgrp/jitsi-react:$TAG"

@@ -9,8 +9,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_ROOT"
 
-# Configuration
-TAG="1.0.0"
+TAG="latest"
 JITSI_MEET_DIR="src"
 DOCKER_DIR="."
 TEMP_BUILD_DIR="/tmp/jitsi-custom-build"
@@ -47,10 +46,8 @@ docker push auroraphtgrp/jitsi-react:$TAG
 echo "✅ Image pushed successfully!"
 echo ""
 echo "Next steps:"
-echo "1. Copy .env.example to .env in docker-jitsi-meet directory"
-echo "2. Configure your .env file"
-echo "3. Update docker-compose.yml to use auroraphtgrp/jitsi-react:$TAG"
-echo "4. Run: docker-compose up -d"
+echo "1. Update docker-compose.yml to use auroraphtgrp/jitsi-react:$TAG"
+echo "2. Run: docker-compose up -d"
 
 # Cleanup
 rm -rf "$TEMP_BUILD_DIR"

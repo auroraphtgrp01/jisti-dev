@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.WindowMessenger = exports.frustrationPlugin = exports.autocapturePlugin = exports.plugin = void 0;
+var autocapture_plugin_1 = require("./autocapture-plugin");
+Object.defineProperty(exports, "plugin", { enumerable: true, get: function () { return autocapture_plugin_1.autocapturePlugin; } });
+Object.defineProperty(exports, "autocapturePlugin", { enumerable: true, get: function () { return autocapture_plugin_1.autocapturePlugin; } });
+var frustration_plugin_1 = require("./frustration-plugin");
+Object.defineProperty(exports, "frustrationPlugin", { enumerable: true, get: function () { return frustration_plugin_1.frustrationPlugin; } });
+var messenger_1 = require("./libs/messenger");
+Object.defineProperty(exports, "WindowMessenger", { enumerable: true, get: function () { return messenger_1.WindowMessenger; } });
+//# sourceMappingURL=index.js.map

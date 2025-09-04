@@ -1,0 +1,347 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.isElementBasedEvent = exports.addAdditionalEventProperties = exports.getEventProperties = exports.filterOutNonTrackableEvents = exports.generateUniqueId = exports.asyncLoadScript = exports.getEventTagProps = exports.getClosestElement = exports.querySelectUniqueElements = exports.getNearestLabel = exports.removeEmptyProperties = exports.isEmpty = exports.getAttributesWithPrefix = exports.isPageUrlAllowed = exports.getText = exports.isNonSensitiveElement = exports.isTextNode = exports.isNonSensitiveString = exports.createShouldTrackEvent = exports.isElementPointerCursor = void 0;
+var tslib_1 = require("tslib");
+/* eslint-disable no-restricted-globals */
+var constants = tslib_1.__importStar(require("./constants"));
+var hierarchy_1 = require("./hierarchy");
+var SENSITIVE_TAGS = ['input', 'select', 'textarea'];
+var isElementPointerCursor = function (element, actionType) {
+    var _a;
+    /* istanbul ignore next */
+    var computedStyle = (_a = window === null || window === void 0 ? void 0 : window.getComputedStyle) === null || _a === void 0 ? void 0 : _a.call(window, element);
+    /* istanbul ignore next */
+    return (computedStyle === null || computedStyle === void 0 ? void 0 : computedStyle.getPropertyValue('cursor')) === 'pointer' && actionType === 'click';
+};
+exports.isElementPointerCursor = isElementPointerCursor;
+var createShouldTrackEvent = function (autocaptureOptions, allowlist, // this can be any type of css selector allow list
+isAlwaysCaptureCursorPointer) {
+    if (isAlwaysCaptureCursorPointer === void 0) { isAlwaysCaptureCursorPointer = false; }
+    return function (actionType, element) {
+        var _a, _b;
+        var pageUrlAllowlist = autocaptureOptions.pageUrlAllowlist, shouldTrackEventResolver = autocaptureOptions.shouldTrackEventResolver;
+        /* istanbul ignore next */
+        var tag = (_b = (_a = element === null || element === void 0 ? void 0 : element.tagName) === null || _a === void 0 ? void 0 : _a.toLowerCase) === null || _b === void 0 ? void 0 : _b.call(_a);
+        // window, document, and Text nodes have no tag
+        if (!tag) {
+            return false;
+        }
+        if (shouldTrackEventResolver) {
+            return shouldTrackEventResolver(actionType, element);
+        }
+        if (!(0, exports.isPageUrlAllowed)(window.location.href, pageUrlAllowlist)) {
+            return false;
+        }
+        /* istanbul ignore next */
+        var elementType = String(element === null || element === void 0 ? void 0 : element.getAttribute('type')) || '';
+        if (typeof elementType === 'string') {
+            switch (elementType.toLowerCase()) {
+                case 'hidden':
+                    return false;
+                case 'password':
+                    return false;
+            }
+        }
+        var isCursorPointer = (0, exports.isElementPointerCursor)(element, actionType);
+        if (isAlwaysCaptureCursorPointer && isCursorPointer) {
+            return true;
+        }
+        /* istanbul ignore if */
+        if (allowlist) {
+            var hasMatchAnyAllowedSelector = allowlist.some(function (selector) { var _a; return !!((_a = element === null || element === void 0 ? void 0 : element.matches) === null || _a === void 0 ? void 0 : _a.call(element, selector)); });
+            if (!hasMatchAnyAllowedSelector) {
+                return false;
+            }
+        }
+        switch (tag) {
+            case 'input':
+            case 'select':
+            case 'textarea':
+                return actionType === 'change' || actionType === 'click';
+            default: {
+                /* istanbul ignore next */
+                /* istanbul ignore next */
+                if (isCursorPointer) {
+                    return true;
+                }
+                return actionType === 'click';
+            }
+        }
+    };
+};
+exports.createShouldTrackEvent = createShouldTrackEvent;
+var isNonSensitiveString = function (text) {
+    if (text == null) {
+        return false;
+    }
+    if (typeof text === 'string') {
+        var ccRegex = /^(?:(4[0-9]{12}(?:[0-9]{3})?)|(5[1-5][0-9]{14})|(6(?:011|5[0-9]{2})[0-9]{12})|(3[47][0-9]{13})|(3(?:0[0-5]|[68][0-9])[0-9]{11})|((?:2131|1800|35[0-9]{3})[0-9]{11}))$/;
+        if (ccRegex.test((text || '').replace(/[- ]/g, ''))) {
+            return false;
+        }
+        var ssnRegex = /(^\d{3}-?\d{2}-?\d{4}$)/;
+        if (ssnRegex.test(text)) {
+            return false;
+        }
+    }
+    return true;
+};
+exports.isNonSensitiveString = isNonSensitiveString;
+var isTextNode = function (node) {
+    return !!node && node.nodeType === 3;
+};
+exports.isTextNode = isTextNode;
+var isNonSensitiveElement = function (element) {
+    var _a, _b, _c;
+    /* istanbul ignore next */
+    var tag = (_b = (_a = element === null || element === void 0 ? void 0 : element.tagName) === null || _a === void 0 ? void 0 : _a.toLowerCase) === null || _b === void 0 ? void 0 : _b.call(_a);
+    var isContentEditable = element instanceof HTMLElement ? ((_c = element.getAttribute('contenteditable')) === null || _c === void 0 ? void 0 : _c.toLowerCase()) === 'true' : false;
+    return !SENSITIVE_TAGS.includes(tag) && !isContentEditable;
+};
+exports.isNonSensitiveElement = isNonSensitiveElement;
+// Maybe this can be simplified with element.innerText, keep and manual concatenating for now, more research needed.
+var getText = function (element) {
+    var text = '';
+    if ((0, exports.isNonSensitiveElement)(element) && element.childNodes && element.childNodes.length) {
+        element.childNodes.forEach(function (child) {
+            var childText = '';
+            if ((0, exports.isTextNode)(child)) {
+                if (child.textContent) {
+                    childText = child.textContent;
+                }
+            }
+            else {
+                childText = (0, exports.getText)(child);
+            }
+            text += childText
+                .split(/(\s+)/)
+                .filter(exports.isNonSensitiveString)
+                .join('')
+                .replace(/[\r\n]/g, ' ')
+                .replace(/[ ]+/g, ' ')
+                .substring(0, 255);
+        });
+    }
+    return text;
+};
+exports.getText = getText;
+var isPageUrlAllowed = function (url, pageUrlAllowlist) {
+    if (!pageUrlAllowlist || !pageUrlAllowlist.length) {
+        return true;
+    }
+    return pageUrlAllowlist.some(function (allowedUrl) {
+        if (typeof allowedUrl === 'string') {
+            return url === allowedUrl;
+        }
+        return url.match(allowedUrl);
+    });
+};
+exports.isPageUrlAllowed = isPageUrlAllowed;
+var getAttributesWithPrefix = function (element, prefix) {
+    return element.getAttributeNames().reduce(function (attributes, attributeName) {
+        if (attributeName.startsWith(prefix)) {
+            var attributeKey = attributeName.replace(prefix, '');
+            var attributeValue = element.getAttribute(attributeName);
+            if (attributeKey) {
+                attributes[attributeKey] = attributeValue || '';
+            }
+        }
+        return attributes;
+    }, {});
+};
+exports.getAttributesWithPrefix = getAttributesWithPrefix;
+var isEmpty = function (value) {
+    return (value === undefined ||
+        value === null ||
+        (typeof value === 'object' && Object.keys(value).length === 0) ||
+        (typeof value === 'string' && value.trim().length === 0));
+};
+exports.isEmpty = isEmpty;
+var removeEmptyProperties = function (properties) {
+    return Object.keys(properties).reduce(function (filteredProperties, key) {
+        var value = properties[key];
+        if (!(0, exports.isEmpty)(value)) {
+            filteredProperties[key] = value;
+        }
+        return filteredProperties;
+    }, {});
+};
+exports.removeEmptyProperties = removeEmptyProperties;
+var getNearestLabel = function (element) {
+    var parent = element.parentElement;
+    if (!parent) {
+        return '';
+    }
+    var labelElement;
+    try {
+        labelElement = parent.querySelector(':scope>span,h1,h2,h3,h4,h5,h6');
+    }
+    catch (error) {
+        /* istanbul ignore next */
+        labelElement = null;
+    }
+    if (labelElement) {
+        /* istanbul ignore next */
+        var labelText = labelElement.textContent || '';
+        return (0, exports.isNonSensitiveString)(labelText) ? labelText : '';
+    }
+    return (0, exports.getNearestLabel)(parent);
+};
+exports.getNearestLabel = getNearestLabel;
+var querySelectUniqueElements = function (root, selectors) {
+    if (root && 'querySelectorAll' in root && typeof root.querySelectorAll === 'function') {
+        var elementSet = selectors.reduce(function (elements, selector) {
+            if (selector) {
+                var selectedElements = Array.from(root.querySelectorAll(selector));
+                selectedElements.forEach(function (element) {
+                    elements.add(element);
+                });
+            }
+            return elements;
+        }, new Set());
+        return Array.from(elementSet);
+    }
+    return [];
+};
+exports.querySelectUniqueElements = querySelectUniqueElements;
+// Similar as element.closest, but works with multiple selectors
+var getClosestElement = function (element, selectors) {
+    if (!element) {
+        return null;
+    }
+    /* istanbul ignore next */
+    if (selectors.some(function (selector) { var _a; return (_a = element === null || element === void 0 ? void 0 : element.matches) === null || _a === void 0 ? void 0 : _a.call(element, selector); })) {
+        return element;
+    }
+    /* istanbul ignore next */
+    return (0, exports.getClosestElement)(element === null || element === void 0 ? void 0 : element.parentElement, selectors);
+};
+exports.getClosestElement = getClosestElement;
+// Returns the element properties for the given element in Visual Labeling.
+var getEventTagProps = function (element) {
+    var _a;
+    var _b, _c;
+    if (!element) {
+        return {};
+    }
+    /* istanbul ignore next */
+    var tag = (_c = (_b = element === null || element === void 0 ? void 0 : element.tagName) === null || _b === void 0 ? void 0 : _b.toLowerCase) === null || _c === void 0 ? void 0 : _c.call(_b);
+    var properties = (_a = {},
+        _a[constants.AMPLITUDE_EVENT_PROP_ELEMENT_TAG] = tag,
+        _a[constants.AMPLITUDE_EVENT_PROP_ELEMENT_TEXT] = (0, exports.getText)(element),
+        _a[constants.AMPLITUDE_EVENT_PROP_PAGE_URL] = window.location.href.split('?')[0],
+        _a);
+    return (0, exports.removeEmptyProperties)(properties);
+};
+exports.getEventTagProps = getEventTagProps;
+var asyncLoadScript = function (url) {
+    return new Promise(function (resolve, reject) {
+        var _a;
+        try {
+            var scriptElement = document.createElement('script');
+            scriptElement.type = 'text/javascript';
+            scriptElement.async = true;
+            scriptElement.src = url;
+            scriptElement.addEventListener('load', function () {
+                resolve({ status: true });
+            }, { once: true });
+            scriptElement.addEventListener('error', function () {
+                reject({
+                    status: false,
+                    message: "Failed to load the script ".concat(url),
+                });
+            });
+            /* istanbul ignore next */
+            (_a = document.head) === null || _a === void 0 ? void 0 : _a.appendChild(scriptElement);
+        }
+        catch (error) {
+            /* istanbul ignore next */
+            reject(error);
+        }
+    });
+};
+exports.asyncLoadScript = asyncLoadScript;
+function generateUniqueId() {
+    return "".concat(Date.now(), "-").concat(Math.random().toString(36).substr(2, 9));
+}
+exports.generateUniqueId = generateUniqueId;
+var filterOutNonTrackableEvents = function (event) {
+    // Filter out changeEvent events with no target
+    // This could happen when change events are triggered programmatically
+    if (event.event.target === null || !event.closestTrackedAncestor) {
+        return false;
+    }
+    return true;
+};
+exports.filterOutNonTrackableEvents = filterOutNonTrackableEvents;
+// Returns the Amplitude event properties for the given element.
+var getEventProperties = function (actionType, element, dataAttributePrefix) {
+    var _a;
+    var _b, _c;
+    /* istanbul ignore next */
+    var tag = (_c = (_b = element === null || element === void 0 ? void 0 : element.tagName) === null || _b === void 0 ? void 0 : _b.toLowerCase) === null || _c === void 0 ? void 0 : _c.call(_b);
+    /* istanbul ignore next */
+    var rect = typeof element.getBoundingClientRect === 'function' ? element.getBoundingClientRect() : { left: null, top: null };
+    var ariaLabel = element.getAttribute('aria-label');
+    var attributes = (0, exports.getAttributesWithPrefix)(element, dataAttributePrefix);
+    var nearestLabel = (0, exports.getNearestLabel)(element);
+    /* istanbul ignore next */
+    var properties = (_a = {},
+        _a[constants.AMPLITUDE_EVENT_PROP_ELEMENT_ID] = element.getAttribute('id') || '',
+        _a[constants.AMPLITUDE_EVENT_PROP_ELEMENT_CLASS] = element.getAttribute('class'),
+        _a[constants.AMPLITUDE_EVENT_PROP_ELEMENT_HIERARCHY] = (0, hierarchy_1.getHierarchy)(element),
+        _a[constants.AMPLITUDE_EVENT_PROP_ELEMENT_TAG] = tag,
+        _a[constants.AMPLITUDE_EVENT_PROP_ELEMENT_TEXT] = (0, exports.getText)(element),
+        _a[constants.AMPLITUDE_EVENT_PROP_ELEMENT_POSITION_LEFT] = rect.left == null ? null : Math.round(rect.left),
+        _a[constants.AMPLITUDE_EVENT_PROP_ELEMENT_POSITION_TOP] = rect.top == null ? null : Math.round(rect.top),
+        _a[constants.AMPLITUDE_EVENT_PROP_ELEMENT_ARIA_LABEL] = ariaLabel,
+        _a[constants.AMPLITUDE_EVENT_PROP_ELEMENT_ATTRIBUTES] = attributes,
+        _a[constants.AMPLITUDE_EVENT_PROP_ELEMENT_PARENT_LABEL] = nearestLabel,
+        _a[constants.AMPLITUDE_EVENT_PROP_PAGE_URL] = window.location.href.split('?')[0],
+        _a[constants.AMPLITUDE_EVENT_PROP_PAGE_TITLE] = (typeof document !== 'undefined' && document.title) || '',
+        _a[constants.AMPLITUDE_EVENT_PROP_VIEWPORT_HEIGHT] = window.innerHeight,
+        _a[constants.AMPLITUDE_EVENT_PROP_VIEWPORT_WIDTH] = window.innerWidth,
+        _a);
+    if (tag === 'a' && actionType === 'click' && element instanceof HTMLAnchorElement) {
+        properties[constants.AMPLITUDE_EVENT_PROP_ELEMENT_HREF] = element.href;
+    }
+    return (0, exports.removeEmptyProperties)(properties);
+};
+exports.getEventProperties = getEventProperties;
+var addAdditionalEventProperties = function (event, type, selectorAllowlist, dataAttributePrefix, 
+// capture the event if the cursor is a "pointer" when this element is clicked on
+// reason: a "pointer" cursor indicates that an element should be interactable
+//         regardless of the element's tag name
+isCapturingCursorPointer) {
+    if (isCapturingCursorPointer === void 0) { isCapturingCursorPointer = false; }
+    var baseEvent = {
+        event: event,
+        timestamp: Date.now(),
+        type: type,
+    };
+    if (isElementBasedEvent(baseEvent) && baseEvent.event.target !== null) {
+        if (isCapturingCursorPointer) {
+            var isCursorPointer = (0, exports.isElementPointerCursor)(baseEvent.event.target, baseEvent.type);
+            if (isCursorPointer) {
+                baseEvent.closestTrackedAncestor = baseEvent.event.target;
+                baseEvent.targetElementProperties = (0, exports.getEventProperties)(baseEvent.type, baseEvent.closestTrackedAncestor, dataAttributePrefix);
+                return baseEvent;
+            }
+        }
+        // Retrieve additional event properties from the target element
+        var closestTrackedAncestor = (0, exports.getClosestElement)(baseEvent.event.target, selectorAllowlist);
+        if (closestTrackedAncestor) {
+            baseEvent.closestTrackedAncestor = closestTrackedAncestor;
+            baseEvent.targetElementProperties = (0, exports.getEventProperties)(baseEvent.type, closestTrackedAncestor, dataAttributePrefix);
+        }
+        return baseEvent;
+    }
+    return baseEvent;
+};
+exports.addAdditionalEventProperties = addAdditionalEventProperties;
+// Type predicate
+function isElementBasedEvent(event) {
+    return event.type === 'click' || event.type === 'change';
+}
+exports.isElementBasedEvent = isElementBasedEvent;
+//# sourceMappingURL=helpers.js.map

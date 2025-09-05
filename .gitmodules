@@ -1,0 +1,3 @@
+[submodule "jitsi-src"]
+	path = jitsi-src
+	url = https://github.com/auroraphtgrp01/jitsi-src

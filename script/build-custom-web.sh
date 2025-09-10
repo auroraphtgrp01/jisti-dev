@@ -9,8 +9,9 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_ROOT"
 
-TAG="latest"
-JITSI_MEET_DIR="src"
+# Configuration
+TAG="1.0.1"
+JITSI_MEET_DIR="jitsi-src"
 DOCKER_DIR="."
 TEMP_BUILD_DIR="/tmp/jitsi-custom-build"
 
@@ -33,9 +34,9 @@ cp "$JITSI_MEET_DIR"/*.js "$TEMP_BUILD_DIR/" 2>/dev/null || true
 # Copy Dockerfile
 cp "$DOCKER_DIR/web/Dockerfile.custom" "$TEMP_BUILD_DIR/Dockerfile"
 
-echo "🏗️  Building Docker image for Linux AMD64..."
+echo "🏗️  Building Docker image..."
 cd "$TEMP_BUILD_DIR"
-docker build --platform linux/amd64 -t auroraphtgrp/jitsi-react:$TAG .
+docker build -t auroraphtgrp/jitsi-react:$TAG .
 
 echo "✅ Custom image built successfully!"
 echo "📝 Image name: auroraphtgrp/jitsi-react:$TAG"
@@ -46,8 +47,10 @@ docker push auroraphtgrp/jitsi-react:$TAG
 echo "✅ Image pushed successfully!"
 echo ""
 echo "Next steps:"
-echo "1. Update docker-compose.yml to use auroraphtgrp/jitsi-react:$TAG"
-echo "2. Run: docker-compose up -d"
+echo "1. Copy .env.example to .env in docker-jitsi-meet directory"
+echo "2. Configure your .env file"
+echo "3. Update docker-compose.yml to use auroraphtgrp/jitsi-react:$TAG"
+echo "4. Run: docker-compose up -d"
 
 # Cleanup
 rm -rf "$TEMP_BUILD_DIR"

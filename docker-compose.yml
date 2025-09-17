@@ -346,7 +346,7 @@ services:
         image: jitsi/jicofo:${JITSI_IMAGE_VERSION:-unstable}
         restart: ${RESTART_POLICY:-unless-stopped}
         ports:
-            - '127.0.0.1:${JICOFO_REST_PORT:-8889}:8888'
+            - '127.0.0.1:${JICOFO_REST_PORT:-8888}:8888'
         volumes:
             - ${CONFIG}/jicofo:/config:Z
         labels:
@@ -442,8 +442,8 @@ services:
         image: jitsi/jvb:${JITSI_IMAGE_VERSION:-unstable}
         restart: ${RESTART_POLICY:-unless-stopped}
         ports:
-            - '${JVB_PORT:-10001}:${JVB_PORT:-10001}/udp'
-            - '127.0.0.1:${JVB_COLIBRI_PORT:-8081}:8080'
+            - '${JVB_PORT:-10000}:${JVB_PORT:-10000}/udp'
+            - '127.0.0.1:${JVB_COLIBRI_PORT:-8080}:8080'
         volumes:
             - ${CONFIG}/jvb:/config:Z
         labels:
